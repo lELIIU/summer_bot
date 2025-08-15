@@ -1,36 +1,35 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
+	_ "log/slog"
+	"os"
 	"summer_bot/internal/config"
-
-	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"summer_bot/internal/transport"
+	//"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func main() {
+
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Error loading config.")
+		log.Fatalf("Error loading config in main.")
 	}
 
-	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
+	bot, err := transport.NewBot(cfg.TelegramBotToken)
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Fatal(err)
 	}
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	logger.Info("Bot is authorized")
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	bot.Start()
 
-	updates := bot.GetUpdatesChan(u)
-
-	for update := range updates {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "вы написали "+update.Message.Chat.UserName)
-
-		if _, err := bot.Send(msg); err != nil {
-			log.Println("Ошибка отправки:", err)
-		}
-
-	}
 }

@@ -12,37 +12,63 @@ type WeatherClient struct {
 	WeatherClient *http.Client
 }
 
+// WeatherResponse представляет полный ответ API погоды
 type WeatherResponse struct {
-	Location struct {
-		Name      string `json:"name"`
-		Region    string `json:"region"`
-		Country   string `json:"country"`
-		LocalTime string `json:"localtime"`
-	} `json:"location"`
-	Current struct {
-		TempC     float64 `json:"temp_c"`
-		Condition struct {
-			Text string `json:"text"`
-		} `json:"condition"`
-		WindKph float64 `json:"wind_kph"`
-		WindDir string  `json:"wind_dir"`
-	} `json:"current"`
-	Forecast struct {
-		Data string `json:"date"`
-		Day  struct {
-			MaxTempC          float64 `json:"maxtemp_c"`
-			MinTempC          float64 `json:"mintemp_c"`
-			AvgTempC          float64 `json:"avgtemp_c"`
-			MaxWindKph        float64 `json:"maxwind_kph"`
-			TotalSnowCM       float64 `json:"totalsnow_cm"`
-			DailyWillItRain   float64 `json:"daily_will_it_rain"`
-			DailyChanceOfRain float64 `json:"daily_chance_of_rain"`
-			Condition         struct {
-				Text string `json:"text"`
-			} `json:"condition"`
-			Uv float64 `json:"uv"`
-		} `json:"day"`
-	} `json:"forecast"`
+	Location Location `json:"location"`
+	Current  Current  `json:"current"`
+	Forecast Forecast `json:"forecast"`
+}
+
+// Location содержит информацию о местоположении
+type Location struct {
+	Name      string  `json:"name"`
+	Region    string  `json:"region"`
+	Country   string  `json:"country"`
+	Lat       float64 `json:"lat"`
+	Lon       float64 `json:"lon"`
+	Timezone  string  `json:"tz_id"`
+	Localtime string  `json:"localtime"`
+}
+
+// Current содержит текущие погодные данные
+type Current struct {
+	LastUpdated string    `json:"last_updated"`
+	TempC       float64   `json:"temp_c"`
+	IsDay       int       `json:"is_day"`
+	Condition   Condition `json:"condition"`
+	WindKPH     float64   `json:"wind_kph"`
+	WindDir     string    `json:"wind_dir"`
+}
+
+// Forecast содержит прогноз погоды
+type Forecast struct {
+	ForecastDays []ForecastDay `json:"forecastday"`
+}
+
+// ForecastDay представляет прогноз на один день
+type ForecastDay struct {
+	Date string `json:"date"`
+	Day  Day    `json:"day"`
+}
+
+// Day содержит дневные погодные данные
+type Day struct {
+	MaxTempC     float64   `json:"maxtemp_c"`
+	MinTempC     float64   `json:"mintemp_c"`
+	AvgTempC     float64   `json:"avgtemp_c"`
+	MaxWindKPH   float64   `json:"maxwind_kph"`
+	TotalSnowCM  float64   `json:"totalsnow_cm"`
+	WillItRain   int       `json:"daily_will_it_rain"`
+	ChanceOfRain int       `json:"daily_chance_of_rain"`
+	WillItSnow   int       `json:"daily_will_it_snow"`
+	ChanceOfSnow int       `json:"daily_chance_of_snow"`
+	Condition    Condition `json:"condition"`
+	UV           float64   `json:"uv"`
+}
+
+// Condition описывает погодные условия
+type Condition struct {
+	Text string `json:"text"`
 }
 
 func NewWeatherClient(apikey string) *WeatherClient {
@@ -52,8 +78,8 @@ func NewWeatherClient(apikey string) *WeatherClient {
 	}
 }
 
-func (c *WeatherClient) GetCurrentWeather(location string) (string, error) {
-	url := fmt.Sprintf("http://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no",
+func (c *WeatherClient) GetCurrentWeather(location string, day int) (string, error) {
+	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%s&q=%s&days=14&aqi=no&alerts=no",
 		c.WeatherAPI, location)
 
 	resp, err := c.WeatherClient.Get(url)
@@ -73,11 +99,16 @@ func (c *WeatherClient) GetCurrentWeather(location string) (string, error) {
 
 	result := fmt.Sprintf(
 		//	"Погода в %s (%s): %.1f°C, %s, Ветер: %.1f км/ч, Влажность: %d%%",
-		"Погода в %s (%s) на %s: \nТемпература: %.1f°C.",
+		"Погода в %s (%s) на %s: \nМаксимальная температура: %.1f°C.\nМинимальная температура: %.1f°C\nСредняя температура :%1.f°C\nСкорость ветра: %.1fкм/ч.\nВероятность дождя (в процентах): %v \nОписание: %s",
 		weatherResponse.Location.Name,
 		weatherResponse.Location.Country,
-		weatherResponse.Location.LocalTime[:10],
-		weatherResponse.Current.TempC,
+		weatherResponse.Forecast.ForecastDays[day].Date,
+		weatherResponse.Forecast.ForecastDays[day].Day.MaxTempC,
+		weatherResponse.Forecast.ForecastDays[day].Day.MinTempC,
+		weatherResponse.Forecast.ForecastDays[day].Day.AvgTempC,
+		weatherResponse.Forecast.ForecastDays[day].Day.MaxWindKPH,
+		weatherResponse.Forecast.ForecastDays[day].Day.ChanceOfRain,
+		weatherResponse.Forecast.ForecastDays[day].Day.Condition.Text,
 	)
 
 	return result, nil

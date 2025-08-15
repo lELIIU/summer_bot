@@ -14,6 +14,6 @@ func NewWeatherService(apiKey string) *WeatherService {
 	}
 }
 
-func (s *WeatherService) GetWeather(city string) (string, error) {
-	return s.Client.GetCurrentWeather(city)
+func (s *WeatherService) GetWeather(city string, day int) (string, error) {
+	return s.Client.GetCurrentWeather(city, day)
 }
